@@ -21,8 +21,10 @@ make logs                   # logs en vivo
 
 ## Acceso a la consola
 
-Abre `http://10.1.0.20:8443` (usuario `admin` + contraseña de `.env` + código 2FA).
-El primer login te pide activar TOTP con Google Authenticator/Authy.
+1. Conecta la VPN WireGuard (cliente en `10.66.0.2`) con la app de WireGuard.
+2. Abre `http://10.66.0.1:8443` (usuario `admin` + contraseña de `.env` + código 2FA).
+
+El panel solo responde en la IP de la VPN. El primer login pide activar TOTP.
 
 ## Puertos
 
@@ -32,7 +34,7 @@ El primer login te pide activar TOTP con Google Authenticator/Authy.
   - OpenCanary: HTTP 80, FTP 21, SMB 445, MySQL 3306, MSSQL 1433, RDP 3389,
     SIP 5060/UDP, VNC 5900.
   - Canary tokens: 9000.
-- Panel: 8443.
+- Panel: 8443 (solo accesible por VPN).
 
 ## Breadcrumbs y honeytokens
 
@@ -69,6 +71,8 @@ crontab -e
   solo-llave y sin root. Corre cada etapa con `sudo bash scripts/harden-sshN.sh`.
 - `scripts/restrict-ssh-ip.sh`: restringe el SSH (2200) a la red local y a
   la IP remota autorizada.
+- `scripts/setup-wireguard.sh`: instala y configura WireGuard.
+- `scripts/restrict-panel-vpn.sh`: limita el panel (8443) a la VPN.
 - `ufw` con default deny entrante; solo se abren los puertos de señuelos, el
   panel y el SSH real.
 
@@ -77,4 +81,5 @@ crontab -e
 - Los señuelos usan red `host` para ver la IP real del atacante; el plano de
   control vive en una red bridge privada. El bloqueo de egress de los señuelos
   y la separacion completa por interfaz (ipvlan/macvlan) quedan para la Fase 2.
-- Pendiente: acceso por VPN (WireGuard) antes de exponer IPs publicas.
+- Queda pendiente: exponer los señuelos con las IPs publicas y el dominio
+  `hp.coeficiente.mx`, y el bloqueo de egress de los señuelos.
