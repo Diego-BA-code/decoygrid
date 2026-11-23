@@ -67,6 +67,8 @@ crontab -e
 
 - `scripts/harden-ssh.sh` (etapas 1-3): mueve el SSH real a 2200, activa
   solo-llave y sin root. Corre cada etapa con `sudo bash scripts/harden-sshN.sh`.
+- `scripts/restrict-ssh-ip.sh`: restringe el SSH (2200) a la red local y a
+  la IP remota autorizada.
 - `ufw` con default deny entrante; solo se abren los puertos de señuelos, el
   panel y el SSH real.
 
@@ -75,5 +77,4 @@ crontab -e
 - Los señuelos usan red `host` para ver la IP real del atacante; el plano de
   control vive en una red bridge privada. El bloqueo de egress de los señuelos
   y la separacion completa por interfaz (ipvlan/macvlan) quedan para la Fase 2.
-- Pendiente: restriccion de SSH por IP y acceso por VPN (WireGuard) antes de
-  exponer IPs publicas.
+- Pendiente: acceso por VPN (WireGuard) antes de exponer IPs publicas.
