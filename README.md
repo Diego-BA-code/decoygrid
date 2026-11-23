@@ -38,11 +38,21 @@ y abre http://localhost:8443 en tu navegador. Usuario/contraseña segun `.env`.
 ## Backup / restauracion
 
 ```bash
-make backup       # copia de SQLite dentro del volumen /data
-make restore-test # verifica el ultimo backup
+make backup       # snapshot SQLite + backup cifrado con restic
+make restore-test # restaura el ultimo snapshot y verifica integridad
 ```
 
-El cifrado con restic se agrega en la Fase 2.
+Los backups van cifrados (AES) a `RESTIC_REPO_DIR` con la clave `RESTIC_PASSWORD`
+(ambas en `.env`). Para copia fuera del servidor, apunta el repositorio a S3/SFTP
+con `RESTIC_REPOSITORY`.
+
+### Backup diario automatico (cron de usuario)
+
+```bash
+crontab -e
+# agregar:
+0 3 * * * cd /home/datacenter/decoygrid && ./scripts/backup.sh >> /home/datacenter/backup.log 2>&1
+```
 
 ## Notas de seguridad (conocidas en esta fase)
 
