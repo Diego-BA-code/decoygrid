@@ -613,7 +613,7 @@ def _qr_svg(uri: str) -> str:
     import qrcode
     import qrcode.image.svg
 
-    img = qrcode.make(uri, image_factory=qrcode.image.svg.SvgImage, box_size=6)
+    img = qrcode.make(uri, image_factory=qrcode.image.svg.SvgPathImage, box_size=6)
     svg = img.to_string()
     return svg.decode("utf-8") if isinstance(svg, bytes) else svg
 
