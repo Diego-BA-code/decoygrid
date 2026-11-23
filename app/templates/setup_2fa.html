@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>DecoyGrid - Configurar 2FA</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background:#0f1420; color:#e6e9ef;
+           display:flex; align-items:center; justify-content:center; height:100vh; margin:0; }
+    .box { background:#171e2e; padding:32px; border-radius:12px; width:380px; text-align:center; }
+    .qr { background:#fff; padding:12px; border-radius:8px; display:inline-block; margin:12px 0; }
+    input { width:100%; box-sizing:border-box; margin:8px 0; padding:10px;
+            border:1px solid #2b3550; border-radius:6px; background:#0f1420; color:#e6e9ef; }
+    button { width:100%; padding:10px; background:#2f6fed; color:white; border:0;
+             border-radius:6px; cursor:pointer; font-weight:600; }
+    .secret { font-family:monospace; color:#7aa2ff; word-break:break-all; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>Activa la autenticación en dos pasos</h2>
+    <p>Escanea este código con Google Authenticator / Authy:</p>
+    <div class="qr">{{ qr | safe }}</div>
+    <p>O usa esta clave manual:</p>
+    <p class="secret">{{ secret }}</p>
+    <form method="post" action="/setup-2fa">
+      <input name="code" placeholder="Código de 6 dígitos" inputmode="numeric" required>
+      <button type="submit">Activar 2FA</button>
+    </form>
+  </div>
+</body>
+</html>

@@ -6,11 +6,12 @@ import threading
 import time
 import uuid
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import docgen
 import httpx
+import pyotp
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from fastapi import FastAPI, Form, HTTPException, Request
@@ -37,6 +38,7 @@ TG_TOKEN = os.getenv("DECOYGRID_TELEGRAM_BOT_TOKEN", "")
 TG_CHAT_ID = os.getenv("DECOYGRID_TELEGRAM_CHAT_ID", "")
 ALERT_MIN_SEVERITY = int(os.getenv("DECOYGRID_ALERT_MIN_SEVERITY", "3"))
 CANARY_BASE = os.getenv("DECOYGRID_CANARY_BASE", "http://10.1.0.20:9000")
+RETENTION_DAYS = int(os.getenv("DECOYGRID_RETENTION_DAYS", "30"))
 
 
 # ----------------------------------------------------------------------------
@@ -108,6 +110,7 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(64), unique=True)
     password_hash: Mapped[str] = mapped_column(String(256))
     role: Mapped[str] = mapped_column(String(16), default="admin")
+    totp_secret: Mapped[str] = mapped_column(String(64), default="")
 
 
 class AuditLog(Base):
@@ -494,6 +497,7 @@ async def lifespan(app: FastAPI):
             )
             s.commit()
     threading.Thread(target=collector_loop, daemon=True).start()
+    threading.Thread(target=cleanup_loop, daemon=True).start()
     yield
 
 
@@ -501,6 +505,10 @@ def _migrate() -> None:
     with engine.begin() as conn:
         try:
             conn.execute(text("ALTER TABLE events ADD COLUMN breadcrumb_id VARCHAR(64) DEFAULT ''"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE users ADD COLUMN totp_secret VARCHAR(64) DEFAULT ''"))
         except Exception:
             pass
 
@@ -529,6 +537,7 @@ def login(
     request: Request,
     username: str = Form(...),
     password: str = Form(...),
+    totp: str = Form(""),
 ):
     ip = request.client.host if request.client else ""
     with SessionLocal() as s:
@@ -543,11 +552,84 @@ def login(
             s.add(AuditLog(username=username, action="login_failed", ip=ip))
             s.commit()
             raise HTTPException(400, "Credenciales invalidas")
+        if u.totp_secret:
+            if not totp or not pyotp.TOTP(u.totp_secret).verify(totp, valid_window=1):
+                s.add(AuditLog(username=u.username, action="login_2fa_failed", ip=ip))
+                s.commit()
+                raise HTTPException(400, "Codigo 2FA invalido")
+        else:
+            secret = pyotp.random_base32()
+            request.session["pending_user"] = u.username
+            request.session["pending_secret"] = secret
+            s.add(AuditLog(username=u.username, action="login_ok_2fa_pending", ip=ip))
+            s.commit()
+            return RedirectResponse("/setup-2fa", status_code=303)
         request.session["user"] = u.username
         request.session["role"] = u.role
         s.add(AuditLog(username=u.username, action="login_ok", ip=ip))
         s.commit()
     return RedirectResponse("/", status_code=303)
+
+
+@app.get("/setup-2fa", response_class=HTMLResponse)
+def setup_2fa_page(request: Request):
+    pending = request.session.get("pending_user")
+    if not pending:
+        return RedirectResponse("/login", status_code=303)
+    secret = request.session.get("pending_secret", "")
+    uri = pyotp.TOTP(secret).provisioning_uri(name=pending, issuer_name="DecoyGrid")
+    qr = _qr_svg(uri)
+    return templates.TemplateResponse(
+        request,
+        "setup_2fa.html",
+        {"user": pending, "secret": secret, "uri": uri, "qr": qr},
+    )
+
+
+@app.post("/setup-2fa")
+def setup_2fa_submit(request: Request, code: str = Form(...)):
+    pending = request.session.get("pending_user")
+    secret = request.session.get("pending_secret", "")
+    if not pending or not secret:
+        raise HTTPException(400, "Sesion de configuracion invalida")
+    if not pyotp.TOTP(secret).verify(code, valid_window=1):
+        raise HTTPException(400, "Codigo invalido")
+    role = "admin"
+    with SessionLocal() as s:
+        u = s.scalar(select(User).where(User.username == pending))
+        if not u:
+            raise HTTPException(400, "Usuario no encontrado")
+        u.totp_secret = secret
+        role = u.role
+        s.commit()
+    request.session["user"] = pending
+    request.session["role"] = role
+    request.session.pop("pending_user", None)
+    request.session.pop("pending_secret", None)
+    return RedirectResponse("/", status_code=303)
+
+
+def _qr_svg(uri: str) -> str:
+    import qrcode
+    import qrcode.image.svg
+
+    img = qrcode.make(uri, image_factory=qrcode.image.svg.SvgImage, box_size=6)
+    svg = img.to_string()
+    return svg.decode("utf-8") if isinstance(svg, bytes) else svg
+
+
+def cleanup_loop() -> None:
+    while True:
+        time.sleep(3600)
+        try:
+            cutoff = datetime.now(timezone.utc) - timedelta(days=RETENTION_DAYS)
+            with SessionLocal() as s:
+                s.execute(text("DELETE FROM alerts WHERE ts < :c"), {"c": cutoff})
+                s.execute(text("DELETE FROM events WHERE ts < :c"), {"c": cutoff})
+                s.commit()
+            print(f"[cleanup] datos anteriores a {cutoff.isoformat()} borrados", flush=True)
+        except Exception as exc:
+            print(f"[cleanup] error: {exc}", flush=True)
 
 
 @app.post("/logout")
