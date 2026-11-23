@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>DecoyGrid - Consola</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background:#0f1420; color:#e6e9ef; margin:0; }
+    header { padding:16px 24px; background:#171e2e; display:flex; justify-content:space-between; align-items:center; }
+    main { padding:24px; }
+    .cards { display:flex; gap:16px; }
+    .card { background:#171e2e; border-radius:10px; padding:20px; flex:1; }
+    .card .num { font-size:32px; font-weight:700; }
+    .burned { color:#8b96b0; }
+    table { width:100%; border-collapse:collapse; margin-top:16px; }
+    th, td { text-align:left; padding:8px; border-bottom:1px solid #232c42; font-size:14px; }
+    th { color:#8b96b0; }
+    .sev3 { color:#f0b429; } .sev4 { color:#f0642e; } .sev5 { color:#e5484d; }
+    a { color:#7aa2ff; text-decoration:none; }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>DecoyGrid</strong>
+    <span><a href="/coverage">cobertura MITRE</a> · usuario: {{ user }} · <a href="/logout">salir</a></span>
+  </header>
+  <main>
+    <div class="cards">
+      <div class="card"><div class="num">{{ total_events }}</div>eventos</div>
+      <div class="card"><div class="num">{{ total_alerts }}</div>alertas</div>
+      <div class="card"><div class="num">{{ total_breadcrumbs }}</div>breadcrumbs</div>
+    </div>
+
+    <h3>Últimos eventos</h3>
+    <table>
+      <tr><th>Fecha (UTC)</th><th>Motor</th><th>Evento</th><th>Origen</th><th>Técnica</th><th>Sev</th><th>#</th></tr>
+      {% for e in events %}
+      <tr>
+        <td>{{ e.ts.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+        <td>{{ e.engine }}</td>
+        <td>{{ e.event_type }}</td>
+        <td>{{ e.src_ip }}:{{ e.src_port }}</td>
+        <td>{{ e.technique_id }} {{ e.technique_name }}</td>
+        <td class="sev{{ e.severity }}">{{ e.severity }}</td>
+        <td>{{ e.count }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+
+    <h3>Alertas</h3>
+    <table>
+      <tr><th>Fecha (UTC)</th><th>Severidad</th><th>Título</th><th>Estado</th></tr>
+      {% for a in alerts %}
+      <tr>
+        <td>{{ a.ts.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+        <td class="sev{{ a.severity }}">{{ a.severity }}</td>
+        <td>{{ a.title }}</td>
+        <td>{{ a.status }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+
+    <h3>Breadcrumbs (credenciales sembradas)</h3>
+    <table>
+      <tr><th>Tipo</th><th>Usuario / Token</th><th>Plantado en</th><th>Estado</th><th>Descargar</th></tr>
+      {% for b in breadcrumbs %}
+      <tr>
+        <td>{{ b.kind }}</td>
+        <td>{{ b.username or b.token }}</td>
+        <td>{{ b.location or '—' }}</td>
+        <td class="{{ 'burned' if b.burned_at else '' }}">
+          {{ '🔥 usado (' + b.burned_at.strftime('%Y-%m-%d %H:%M') + ')' if b.burned_at else 'activo' }}
+        </td>
+        <td>
+          {% if b.kind == 'document' %}
+            <a href="/api/breadcrumbs/{{ b.token }}/document?fmt=docx">docx</a> ·
+            <a href="/api/breadcrumbs/{{ b.token }}/document?fmt=xlsx">xlsx</a> ·
+            <a href="/api/breadcrumbs/{{ b.token }}/document?fmt=pdf">pdf</a>
+          {% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </main>
+</body>
+</html>

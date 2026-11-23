@@ -1,0 +1,38 @@
+name: E2E
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar dependencias
+        run: sudo apt-get update && sudo apt-get install -y sshpass nmap
+
+      - name: Crear .env de prueba
+        run: |
+          cat > .env <<'EOF'
+          DECOYGRID_ADMIN_USER=admin
+          DECOYGRID_ADMIN_PASSWORD=test-admin-password
+          DECOYGRID_SESSION_SECRET=ci-secret-not-for-prod
+          DECOYGRID_WEBHOOK_URL=
+          DECOYGRID_TELEGRAM_BOT_TOKEN=
+          DECOYGRID_TELEGRAM_CHAT_ID=
+          DECOYGRID_ALERT_MIN_SEVERITY=3
+          DECOYGRID_RETENTION_DAYS=30
+          EOF
+
+      - name: Levantar stack (cowrie + app + caddy)
+        run: docker compose up -d --build cowrie app caddy
+
+      - name: Ejecutar prueba E2E
+        run: python3 tests/e2e.py
+
+      - name: Logs en caso de fallo
+        if: failure()
+        run: docker compose logs --tail=100

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>DecoyGrid - Acceso</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background:#0f1420; color:#e6e9ef;
+           display:flex; align-items:center; justify-content:center; height:100vh; margin:0; }
+    form { background:#171e2e; padding:32px; border-radius:12px; width:320px; }
+    input { width:100%; box-sizing:border-box; margin:8px 0; padding:10px;
+            border:1px solid #2b3550; border-radius:6px; background:#0f1420; color:#e6e9ef; }
+    button { width:100%; padding:10px; background:#2f6fed; color:white; border:0;
+             border-radius:6px; cursor:pointer; font-weight:600; }
+  </style>
+</head>
+<body>
+  <form method="post" action="/login">
+    <h2>DecoyGrid</h2>
+    <input name="username" placeholder="Usuario" autocomplete="username" required>
+    <input name="password" type="password" placeholder="Contraseña"
+           autocomplete="current-password" required>
+    <button type="submit">Entrar</button>
+  </form>
+</body>
+</html>

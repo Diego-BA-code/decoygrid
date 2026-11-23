@@ -1,0 +1,10 @@
+{
+	# Panel en HTTP por ahora: se accede por tunel SSH (localhost:8443).
+	# Cuando exista hp.coeficiente.mx se pasa a HTTPS automatico.
+	auto_https off
+	admin off
+}
+
+:443 {
+	reverse_proxy app:8000
+}

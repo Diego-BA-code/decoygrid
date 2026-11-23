@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>DecoyGrid - Cobertura MITRE ATT&CK</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background:#0f1420; color:#e6e9ef; margin:0; }
+    header { padding:16px 24px; background:#171e2e; display:flex; justify-content:space-between; align-items:center; }
+    main { padding:24px; }
+    .stats { display:flex; gap:16px; }
+    .card { background:#171e2e; border-radius:10px; padding:20px; flex:1; }
+    .card .num { font-size:28px; font-weight:700; color:#2f6fed; }
+    h3 { margin-top:28px; }
+    table { width:100%; border-collapse:collapse; margin-top:10px; }
+    th, td { text-align:left; padding:7px; border-bottom:1px solid #232c42; font-size:14px; }
+    th { color:#8b96b0; }
+    a { color:#7aa2ff; text-decoration:none; }
+    .tid { color:#2f6fed; font-family:monospace; }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>DecoyGrid · Cobertura MITRE ATT&CK</strong>
+    <span><a href="/">consola</a> · usuario: {{ user }}</span>
+  </header>
+  <main>
+    <div class="stats">
+      <div class="card"><div class="num">{{ total_covered }}</div>técnicas cubiertas</div>
+      <div class="card"><div class="num">{{ total_all }}</div>técnicas en el mapa</div>
+    </div>
+    <p><a href="/api/coverage/layer">Descargar capa para ATT&CK Navigator</a></p>
+
+    {% for tactic, techs in by_tactic.items() %}
+    <h3>{{ tactic }} <small>({{ techs|length }})</small></h3>
+    <table>
+      <tr><th>Técnica</th><th>Nombre</th></tr>
+      {% for t in techs %}
+      <tr><td class="tid">{{ t.id }}</td><td>{{ t.name }}</td></tr>
+      {% endfor %}
+    </table>
+    {% endfor %}
+  </main>
+</body>
+</html>

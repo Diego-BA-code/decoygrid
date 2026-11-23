@@ -1,0 +1,8 @@
+# DecoyGrid - credenciales del senuelo SSH
+# Formato: usuario:x:contrasena  (el prefijo ! deniega esa contrasena)
+root:x:SecretPass2026
+root:x:!123456
+root:x:!password
+root:x:!admin
+root:x:!root
+admin:x:DecoyGrid2026

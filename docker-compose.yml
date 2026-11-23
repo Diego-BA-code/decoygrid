@@ -1,0 +1,98 @@
+name: decoygrid
+
+services:
+  # ---- Señuelos (red del host: necesitan ver la IP real del atacante) ----
+  cowrie:
+    image: cowrie/cowrie:3.1.8@sha256:115ed9b682dce64a112d6185dcd64c94969599e5b63f13c3e85927a9b2f0292f
+    container_name: decoygrid-cowrie
+    network_mode: host
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid
+    mem_limit: 512m
+    cpus: 0.5
+    volumes:
+      - cowrie-var:/cowrie/cowrie-git/var
+      - ./cowrie:/cowrie/cowrie-git/etc
+
+  opencanary:
+    build: ./opencanary
+    container_name: decoygrid-opencanary
+    network_mode: host
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE, SETUID, SETGID, CHOWN, DAC_OVERRIDE, FOWNER]
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid
+      - /run:size=16m,noexec,nosuid
+      - /var/log:size=32m,noexec,nosuid
+      - /var/lib/samba:size=16m,noexec,nosuid
+      - /var/cache/samba:size=16m,noexec,nosuid
+    mem_limit: 512m
+    cpus: 0.5
+    command: ["--dev"]
+    volumes:
+      - ./opencanary/opencanary.conf:/etc/opencanaryd/opencanary.conf:ro
+      - opencanary-logs:/var/tmp
+
+  canary:
+    build: ./canary
+    container_name: decoygrid-canary
+    network_mode: host
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid
+    mem_limit: 64m
+    cpus: 0.2
+    volumes:
+      - canary-logs:/var/tmp
+
+  # ---- Plano de control (red privada) ----
+  app:
+    build: ./app
+    container_name: decoygrid-app
+    restart: unless-stopped
+    networks: [control]
+    env_file: .env
+    volumes:
+      - cowrie-var:/logs/cowrie:ro
+      - opencanary-logs:/logs/opencanary:ro
+      - canary-logs:/logs/canary:ro
+      - app-data:/data
+
+  caddy:
+    image: caddy:2.11.9-alpine
+    container_name: decoygrid-caddy
+    restart: unless-stopped
+    networks: [control]
+    ports:
+      - "8443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+
+networks:
+  control:
+    driver: bridge
+
+volumes:
+  cowrie-var:
+  opencanary-logs:
+  canary-logs:
+  app-data:
+  caddy-data:
+  caddy-config:
